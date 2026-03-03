@@ -1,0 +1,38 @@
+---
+globs: "**/ocr.py"
+---
+
+# OCR Pipeline (pdf2image + pytesseract)
+
+## Context
+
+`src/bot/ocr.py` converts downloaded PDFs into plain text via image-based OCR. This is the only module that touches PDF processing.
+
+## Patterns
+
+- Use `pdf2image.convert_from_path()` to get a list of PIL Images, one per page
+- Use `pytesseract.image_to_string()` on each image
+- Default DPI is 300; accept it as a parameter for tuning
+- Skip empty pages (only append if `text.strip()` is truthy)
+- Join pages with `"\n\n"` to preserve page boundaries
+
+```python
+images = convert_from_path(pdf_path, dpi=dpi)
+for image in images:
+    text = pytesseract.image_to_string(image)
+    if text.strip():
+        pages.append(text.strip())
+return "\n\n".join(pages)
+```
+
+## Anti-patterns
+
+- Do not use `PyPDF2` / `pdfplumber` text extraction -- the PDFs may be scanned images, so OCR is required
+- Do not write intermediate image files to disk; `convert_from_path` returns in-memory PIL images
+- Do not silently swallow OCR errors; let exceptions propagate so the caller sees failures
+
+## Best Practices
+
+- If OCR quality is poor, increase DPI (e.g., 400-600) at the cost of speed
+- Consider `pytesseract.image_to_string(image, lang='eng')` if non-English text appears
+- Keep this module focused on PDF-to-text; do not add LLM or browser logic here

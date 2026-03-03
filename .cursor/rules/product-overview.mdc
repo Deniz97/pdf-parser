@@ -1,0 +1,34 @@
+---
+alwaysApply: true
+---
+
+# Product Overview
+
+## What This Is
+
+A CLI bot that automates answering a multi-question web form. The form page contains a Flash viewer with a Print PDF button in nested iframes, a PDF download, and answer inputs with a submit button.
+
+## Pipeline
+
+1. Open target URL in Chrome (SeleniumBase CDP mode)
+2. Skip Cloudflare challenge if present
+3. **Print PDF**: Traverse iframe tree inside `<main>`, find button with text "Print PDF", click via CDP mouse events → PDF auto-downloads (Chrome must have `plugins.always_open_pdf_externally`)
+4. Wait for PDF in download dir, OCR via pdf2image + pytesseract
+5. For each question: extract question text, get LLM answer, fill form field (text or select)
+6. Click submit
+
+## Key Design Decisions
+
+- **Print PDF via iframe traversal only**: `find_print_pdf_via_iframes` searches nested iframes
+- **PDF auto-download**: Use `make launch-chrome` to get Chrome with PDF prefs; no popup/ESC/Download-button flow
+- **Temp download directory**: PDFs download to a temp dir by default, configurable with `--download-dir`
+- **Visible browser by default**: No headless unless `--headless` is passed
+- **Single-run**: Bot runs once and exits; `SB` context manager cleans up
+- **Selector overrides**: `--submit-selector` for submit button; form fields/question extraction are auto-detected
+
+## Anti-patterns
+
+- Do not add persistent state, databases, or caching — this is a single-shot script
+- Do not hardcode URLs or selectors; they must come from CLI args
+- Do not add retry loops around the full pipeline; individual steps already have timeouts
+- Do not re-add ESC/PDF iframe/Download flow — PDF auto-download obviates it

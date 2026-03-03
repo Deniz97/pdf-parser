@@ -1,0 +1,42 @@
+---
+globs: "**/vision.py"
+---
+
+# Vision (Template Matching + OCR Text Detection)
+
+## Context
+
+`src/bot/vision.py` provides image-based localization: template matching (OpenCV) and OCR text search (pytesseract) on screenshots. Used by tests and debugging; the main bot pipeline uses iframe traversal for Print PDF, not vision.
+
+## Patterns
+
+### Template Matching
+
+- `find_template(screenshot, template, threshold=0.8, scales=SCALES)` → `MatchResult`
+- Multi-scale matching (0.5–2.0) handles DPI/resolution differences between reference and live screenshots
+- `MatchResult.found` is True when `confidence >= threshold`; `.center` gives click coordinates
+
+### OCR Text Detection
+
+- `find_text_ocr(screenshot, target, crop=OCR_CROP_REGION, ...)` → `OcrMatchResult`
+- Pre-processes: crop, grayscale, invert, threshold, scale for white-on-colored text (e.g., button labels)
+- `OCR_CROP_REGION` defaults to Print PDF button region `(1250, 150, 1700, 350)`
+- Returns coordinates in original screenshot space (adds crop offset to word boxes)
+
+### Debug Helpers
+
+- `highlight_match(screenshot, result, output_path)` — draw rectangle on match
+- `highlight_ocr_match(...)` — draw all detected words + highlight match
+- `draw_click_marker(...)` — crosshair at click point for visual debugging
+
+## Anti-patterns
+
+- Do not use vision in the main Print PDF flow; iframe traversal is the canonical approach
+- Do not assume `find_template` works across all screen densities; use multiple scales
+- Do not skip the `crop` parameter for `find_text_ocr` when targeting a known region—narrowing improves accuracy
+
+## Best Practices
+
+- Test fixtures: `tests/example-page.png`, `tests/print-pdf-button.png`; conftest fixtures use `TESTS_DIR`
+- If template match fails, add scale factors to `SCALES` or adjust `threshold`
+- For OCR on button labels, use `invert=True` and `scale=2.0` for white text on colored backgrounds

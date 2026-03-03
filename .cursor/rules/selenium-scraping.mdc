@@ -1,0 +1,43 @@
+---
+globs: "**/browser.py"
+---
+
+# Selenium & Scraping
+
+## Context
+
+`src/bot/browser.py` owns all Chrome/Selenium interactions: driver lifecycle, page navigation, element detection, downloading, and form submission.
+
+## Print PDF Flow (Primary)
+
+1. **Iframe traversal**: `find_print_pdf_via_iframes` walks nested iframes under `main > iframe`, depth-first search for `<button>` with text exactly "Print PDF"
+2. **CDP click**: Use `Input.dispatchMouseEvent` (trusted events); `btn.click()` is often blocked by `isTrusted` checks
+3. **PDF auto-download**: Chrome must have `plugins.always_open_pdf_externally: True`. Use `make launch-chrome` to get a profile with these prefs
+4. **No fallbacks**: Print PDF uses iframe traversal only; template/OCR alternatives were removed
+
+## Patterns
+
+### Driver Setup
+
+- `configure_download_dir(sb, path)` sets CDP `Browser.setDownloadBehavior` for PDF save location
+- For PDF auto-download, Chrome profile needs `plugins.always_open_pdf_externally` (written by `scripts/launch_chrome.py`)
+
+### Waits
+
+- Use polling loops with `time.sleep(0.5)` for file-system waits (download detection)
+- `find_print_pdf_via_iframes` retries with 0.5s interval until timeout
+
+### Download Detection
+
+- `wait_for_download(dir, timeout)`: poll for `*.pdf`, exclude `.crdownload`, return most recent
+
+## Anti-patterns
+
+- Do not re-add ESC/PDF iframe/Download-button flow — PDF auto-download makes it obsolete
+- Do not use `driver.implicitly_wait()` — explicit waits are more predictable
+- Do not import selenium/seleniumbase outside `browser.py` (or test scripts)
+- Do not use `btn.click()` for Print PDF — use CDP `Input.dispatchMouseEvent`
+
+## Best Practices
+
+- Type hints: annotate `driver` as `webdriver.Chrome`, `sb` as `SB`

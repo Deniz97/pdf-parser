@@ -1,0 +1,52 @@
+---
+globs: "**/llm.py"
+---
+
+# LLM Usage (OpenAI SDK)
+
+## Context
+
+`src/bot/llm.py` sends the extracted question and PDF text to an OpenAI chat model and returns the answer string. This is the only module that talks to the LLM.
+
+## Patterns
+
+### Client Initialization
+
+- Instantiate `OpenAI()` with no arguments; it reads `OPENAI_API_KEY` from the environment (loaded by `python-dotenv` in `main.py`)
+- Do not pass the API key as a function parameter
+
+### Message Structure
+
+- **System message**: Instructs the model to answer strictly from the provided PDF text, concisely
+- **User message**: Formatted with `### Question` and `### PDF Content` sections
+- Keep `temperature` low (0.2) for factual, deterministic answers
+
+```python
+response = client.chat.completions.create(
+    model=model,
+    messages=[
+        {"role": "system", "content": SYSTEM_PROMPT},
+        {"role": "user", "content": f"### Question\n{question}\n\n### PDF Content\n{context}"},
+    ],
+    temperature=0.2,
+)
+return response.choices[0].message.content.strip()
+```
+
+### Model Selection
+
+- Default to `gpt-4o-mini` for cost efficiency
+- Accept model as a parameter so callers can pass `--model gpt-4o` etc.
+
+## Anti-patterns
+
+- Do not hardcode the API key or read it directly from `.env` in this module
+- Do not add retry/backoff logic here; let the OpenAI SDK's built-in retries handle transient errors
+- Do not stream responses -- the bot needs the full answer before typing it
+- Do not add browser or OCR logic to this module
+
+## Best Practices
+
+- Always `.strip()` the response content before returning
+- Keep the system prompt in a module-level constant for easy editing
+- If the answer quality is poor, adjust the system prompt or switch models -- do not add post-processing heuristics

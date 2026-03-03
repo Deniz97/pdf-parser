@@ -1,0 +1,24 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+
+# Environment secrets
+.env
+
+# Browser profile (cookies, localStorage); user-specific, don't commit
+user_data/
+
+# Chrome debug profile for pdf_download_tests (PDF prefs, separate from system Chrome)
+.chrome-debug-profile/
+
+# Runtime / debug output
+outputs/
+downloaded_files/
+.pytest_cache/
