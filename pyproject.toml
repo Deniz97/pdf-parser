@@ -26,7 +26,7 @@ bot = "bot.main:main"
 
 [tool.ruff]
 target-version = "py311"
-line-length = 120
+line-length = 160
 src = ["src", "tests", "scripts"]
 
 [tool.ruff.lint]

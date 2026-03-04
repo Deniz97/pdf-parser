@@ -21,7 +21,6 @@ DEFAULT_USER_DATA_DIR = "user_data"
 DEFAULT_MODEL = "gpt-4o-mini"
 DEFAULT_DOWNLOAD_TIMEOUT = 30
 DEFAULT_IFRAME_TIMEOUT = 10
-DEFAULT_SUBMIT_SELECTOR: str | None = None
 
 
 def run_answer_and_submit(
@@ -29,7 +28,6 @@ def run_answer_and_submit(
     pdf_text: str,
     num_steps: int,
     model: str = "gpt-4o-mini",
-    submit_selector: str | None = None,
     on_before_fill: Callable[[int, str, str, str], None] | None = None,
     on_after_fill: Callable[[int, str, str, str], None] | None = None,
 ) -> None:
@@ -53,7 +51,7 @@ def run_answer_and_submit(
         browser.fill_step(sb, i, answer, input_type=input_type)
         if on_after_fill:
             on_after_fill(i, question, input_type, answer)
-    browser.click_submit(sb, selector=submit_selector, timeout=10)
+    browser.click_submit(sb)
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -181,7 +179,6 @@ def run(args: argparse.Namespace) -> None:
             pdf_text,
             n,
             model=DEFAULT_MODEL,
-            submit_selector=DEFAULT_SUBMIT_SELECTOR,
             on_before_fill=on_before_fill,
             on_after_fill=on_after_fill,
         )

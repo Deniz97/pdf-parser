@@ -16,9 +16,7 @@ logger = logging.getLogger(__name__)
 
 # CSS for the red-dot indicator (used in _paint_red_dot_on_element)
 _RED_DOT_CSS = (
-    "position:absolute;right:4px;top:50%;transform:translateY(-50%);"
-    "width:12px;height:12px;border-radius:50%;background:red;"
-    "z-index:9999;pointer-events:none"
+    "position:absolute;right:4px;top:50%;transform:translateY(-50%);width:12px;height:12px;border-radius:50%;background:red;z-index:9999;pointer-events:none"
 )
 
 
@@ -278,7 +276,7 @@ def find_print_pdf_via_iframes(sb: BrowserLike, timeout: int = 10, max_scroll_re
             visible = result.get("visible", True)
             if not visible and scroll_refreshes_done < max_scroll_refreshes:
                 logger.info(
-                    "iframe traversal: Print PDF found but scrolled out of view " "(attempt %d). Refreshing page and retrying…",
+                    "iframe traversal: Print PDF found but scrolled out of view (attempt %d). Refreshing page and retrying…",
                     attempt,
                 )
                 scroll_refreshes_done += 1
@@ -295,7 +293,7 @@ def find_print_pdf_via_iframes(sb: BrowserLike, timeout: int = 10, max_scroll_re
                     return False, "main iframe did not reappear after refresh"
                 continue  # retry search
             logger.info(
-                "iframe traversal: found Print PDF at depth %d in %.0fms " "(attempt %d, %d iframes searched, %d buttons seen)",
+                "iframe traversal: found Print PDF at depth %d in %.0fms (attempt %d, %d iframes searched, %d buttons seen)",
                 result.get("depth", -1),
                 elapsed_ms,
                 attempt,
@@ -316,9 +314,7 @@ def find_print_pdf_via_iframes(sb: BrowserLike, timeout: int = 10, max_scroll_re
         last_error = error
         last_diag = diag
 
-        diag_summary = (
-            f"iframes={diag.get('iframesSearched', '?')}, " f"buttons={diag.get('buttonsFound', '?')}, " f"maxDepth={diag.get('maxDepthReached', '?')}"
-        )
+        diag_summary = f"iframes={diag.get('iframesSearched', '?')}, buttons={diag.get('buttonsFound', '?')}, maxDepth={diag.get('maxDepthReached', '?')}"
         if diag.get("buttonTexts"):
             diag_summary += f", texts={diag['buttonTexts']}"
         if diag.get("crossOriginErrors"):
@@ -438,7 +434,7 @@ def get_step_input_type(sb: BrowserLike, step: int) -> str:
     Finds all visible ``input[type="text"]``, ``textarea``, and ``select``
     elements in DOM order and checks the tag at the given index.
     """
-    js = "JSON.stringify([...document.querySelectorAll(" "'input[type=\"text\"], textarea, select')]" ".map(el => el.tagName.toLowerCase()))"
+    js = "JSON.stringify([...document.querySelectorAll('input[type=\"text\"], textarea, select')].map(el => el.tagName.toLowerCase()))"
     raw = sb.cdp.evaluate(js)
     tags = json.loads(raw) if isinstance(raw, str) else raw
 
@@ -555,31 +551,14 @@ def _paint_red_dot_on_element(sb: BrowserLike, selector: str) -> None:
 
 def click_submit(
     sb: BrowserLike,
-    selector: str | None = None,
     timeout: int = 5,
 ) -> None:
     """Click the submit button on the form."""
-    if selector:
-        sb.cdp.wait_for_element(selector, timeout=timeout)
-        sb.cdp.click(selector)
-        _paint_red_dot_on_element(sb, selector)
-        return
-
-    for sel in (
-        'button[type="submit"]',
-        'button:contains("Submit")',
-        'button:contains("submit")',
-        "input[type='submit']",
-    ):
-        try:
-            sb.cdp.click(sel)
-            _paint_red_dot_on_element(sb, sel)
-            return
-        except Exception as exc:
-            logger.debug("Submit selector %r failed: %s", sel, exc)
-            continue
-
-    raise RuntimeError("Could not locate the submit button")
+    selector = 'button[type="submit"]'
+    sb.cdp.wait_for_element(selector, timeout=timeout)
+    sb.cdp.click(selector)
+    _paint_red_dot_on_element(sb, selector)
+    return
 
 
 def _do_cdp_mouse_click(driver: DriverLike, css_x: float, css_y: float) -> bool:
