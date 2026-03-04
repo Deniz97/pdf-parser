@@ -3,9 +3,9 @@ from __future__ import annotations
 import logging
 from pathlib import Path
 
+import pytesseract
 from pdf2image import convert_from_path
 from PIL import Image
-import pytesseract
 
 logger = logging.getLogger(__name__)
 

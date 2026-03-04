@@ -8,10 +8,12 @@ Usage:
   make flow-2              # Run with fresh Chrome
   make flow-2-attach       # Attach (Chrome must be running, already on form page)
 """
+
 from __future__ import annotations
 
 import argparse
 import logging
+import os
 import sys
 from pathlib import Path
 
@@ -21,14 +23,13 @@ sys.path.insert(0, str(_repo_root))
 
 from seleniumbase import SB
 
-from bot import browser
+from bot import browser, chrome_utils
 from tests.browser_utils import (
     DEFAULT_DOWNLOAD_DIR,
     DEFAULT_PORT,
     DEFAULT_URL,
     REPO_ROOT,
     connect,
-    _write_pdf_download_prefs,
 )
 
 logging.basicConfig(
@@ -44,7 +45,7 @@ IFRAME_TIMEOUT = 10
 def run_with_sb(url: str, download_dir: str) -> int:
     """Run with SeleniumBase (fresh Chrome, full flow from start)."""
     user_data_dir = str(REPO_ROOT / "user_data")
-    _write_pdf_download_prefs(user_data_dir, download_dir)
+    chrome_utils.write_pdf_download_prefs(user_data_dir, download_dir)
 
     with SB(
         uc=True,
@@ -112,8 +113,6 @@ def run_attach(port: int, download_dir: str) -> int:
 
 
 def main() -> int:
-    import os
-
     parser = argparse.ArgumentParser(
         description="Flow 2: Print PDF via iframe",
         epilog="make flow-2 = run with fresh Chrome. make flow-2-attach = attach to existing.",

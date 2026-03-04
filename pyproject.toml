@@ -10,7 +10,6 @@ dependencies = [
     "pytesseract",
     "openai",
     "python-dotenv",
-    "opencv-python-headless",
 ]
 
 [project.optional-dependencies]
@@ -18,14 +17,33 @@ dev = [
     "pytest",
     "ruff",
     "black",
-    "mypy",
+    "pyright",
+    "opencv-python-headless",
 ]
 
 [project.scripts]
 bot = "bot.main:main"
 
-[tool.pytest.ini_options]
-markers = ["cloudflare: requires a live browser and network (deselect with '-m not cloudflare')"]
+[tool.ruff]
+target-version = "py311"
+line-length = 120
+src = ["src", "tests", "scripts"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/flow_*.py" = ["E402"]  # path setup before bot imports
+
+[tool.black]
+target-version = ["py311"]
+line-length = 160
+
+[tool.pyright]
+pythonVersion = "3.11"
+reportMissingImports = "warning"  # seleniumbase, pytesseract lack stubs
+reportGeneralTypeIssues = "warning"  # seleniumbase SB is a context manager, not class
+reportArgumentType = "warning"  # BaseCase vs BrowserLike protocol (seleniumbase untyped)
 
 [build-system]
 requires = ["uv_build>=0.8.17,<0.9.0"]

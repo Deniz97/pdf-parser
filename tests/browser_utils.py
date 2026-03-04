@@ -1,11 +1,9 @@
 """Shared run/attach infrastructure for integration flow tests."""
+
 from __future__ import annotations
 
-import json
 import logging
 import os
-import platform
-import shutil
 import subprocess
 import time
 from pathlib import Path
@@ -13,15 +11,17 @@ from pathlib import Path
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.support.ui import WebDriverWait
+
+from bot import chrome_utils
+from bot.config import (
+    DEFAULT_DOWNLOAD_DIR,
+    DEFAULT_PORT,
+    DEFAULT_USER_DATA_DIR,
+)
 
 TESTS_DIR = Path(__file__).resolve().parent
-REPO_ROOT = TESTS_DIR.parent
-DEFAULT_URL = "https://staging.squadhealth.ai/interview"
-DEFAULT_PORT = 9222
-DEFAULT_DOWNLOAD_DIR = str(REPO_ROOT / "outputs" / "flow_tests")
-DEFAULT_USER_DATA_DIR = str(REPO_ROOT / ".chrome-debug-profile")
 
 logger = logging.getLogger(__name__)
 
@@ -60,15 +60,11 @@ class _CdpAdapter:
 
     def wait_for_element(self, selector: str, timeout: int = 5) -> None:
         by, value = _selector_to_by(selector)
-        WebDriverWait(self._driver, timeout).until(
-            EC.presence_of_element_located((by, value))
-        )
+        WebDriverWait(self._driver, timeout).until(EC.presence_of_element_located((by, value)))
 
     def click(self, selector: str) -> None:
         by, value = _selector_to_by(selector)
-        el = WebDriverWait(self._driver, 10).until(
-            EC.element_to_be_clickable((by, value))
-        )
+        el = WebDriverWait(self._driver, 10).until(EC.element_to_be_clickable((by, value)))
         el.click()
 
 
@@ -77,6 +73,7 @@ def _selector_to_by(selector: str) -> tuple[By, str]:
     if ":contains(" in selector:
         # button:contains("Submit") -> XPath
         import re
+
         m = re.match(r"(\w+):contains\(\"([^\"]+)\"\)", selector)
         if m:
             tag, text = m.groups()
@@ -102,56 +99,6 @@ class SbAdapter:
         self.sleep(3)
 
 
-def _find_chrome_executable() -> str:
-    if platform.system() == "Darwin":
-        candidates = [
-            "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
-            "/Applications/Chromium.app/Contents/MacOS/Chromium",
-        ]
-        for p in candidates:
-            if os.path.isfile(p):
-                return p
-    elif platform.system() == "Linux":
-        for name in ("google-chrome", "google-chrome-stable", "chromium", "chromium-browser"):
-            path = shutil.which(name)
-            if path:
-                return path
-    elif platform.system() == "Windows":
-        candidates = [
-            os.path.expandvars(r"%ProgramFiles%\Google\Chrome\Application\chrome.exe"),
-            os.path.expandvars(r"%ProgramFiles(x86)%\Google\Chrome\Application\chrome.exe"),
-        ]
-        for p in candidates:
-            if os.path.isfile(p):
-                return p
-    raise FileNotFoundError("Chrome executable not found")
-
-
-def _write_pdf_download_prefs(user_data_dir: str, download_dir: str) -> None:
-    default_dir = Path(user_data_dir) / "Default"
-    default_dir.mkdir(parents=True, exist_ok=True)
-    prefs_path = default_dir / "Preferences"
-
-    prefs: dict = {}
-    if prefs_path.exists():
-        try:
-            prefs = json.loads(prefs_path.read_text())
-        except (json.JSONDecodeError, OSError):
-            pass
-
-    prefs.setdefault("plugins", {})["always_open_pdf_externally"] = True
-    prefs.setdefault("download", {}).update(
-        {
-            "prompt_for_download": False,
-            "default_directory": os.path.abspath(download_dir),
-            "directory_upgrade": True,
-        }
-    )
-
-    prefs_path.write_text(json.dumps(prefs, indent=2))
-    logger.info("Wrote PDF auto-download prefs to %s", prefs_path)
-
-
 def launch_chrome(
     port: int = DEFAULT_PORT,
     download_dir: str | None = None,
@@ -164,9 +111,9 @@ def launch_chrome(
     os.makedirs(dir_path, exist_ok=True)
 
     ud = os.path.abspath(user_data_dir or DEFAULT_USER_DATA_DIR)
-    _write_pdf_download_prefs(ud, dir_path)
+    chrome_utils.write_pdf_download_prefs(ud, dir_path)
 
-    chrome = chrome_path or _find_chrome_executable()
+    chrome = chrome_path or chrome_utils.find_chrome_executable()
     cmd = [
         chrome,
         f"--remote-debugging-port={port}",

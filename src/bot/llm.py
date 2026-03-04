@@ -2,6 +2,17 @@ from __future__ import annotations
 
 from openai import OpenAI
 
+_client: OpenAI | None = None
+
+
+def _get_client() -> OpenAI:
+    """Return a module-level lazy singleton OpenAI client."""
+    global _client
+    if _client is None:
+        _client = OpenAI()
+    return _client
+
+
 SYSTEM_PROMPT = (
     "You are a helpful assistant. The user will provide a question and the text "
     "content extracted (via OCR) from a PDF document. Answer the question using "
@@ -26,13 +37,9 @@ def ask(
     *answer_type* can be ``'text'`` (free-form) or ``'select'`` (Yes/No
     dropdown) — a format hint is appended to steer the LLM response.
     """
-    client = OpenAI()
+    client = _get_client()
 
-    user_message = (
-        f"### Question\n{question}\n\n"
-        f"### PDF Content\n{context}"
-        f"{_FORMAT_HINTS.get(answer_type, '')}"
-    )
+    user_message = f"### Question\n{question}\n\n### PDF Content\n{context}{_FORMAT_HINTS.get(answer_type, '')}"
 
     response = client.chat.completions.create(
         model=model,
@@ -43,4 +50,5 @@ def ask(
         temperature=0.2,
     )
 
-    return response.choices[0].message.content.strip()
+    content = response.choices[0].message.content
+    return (content or "").strip()

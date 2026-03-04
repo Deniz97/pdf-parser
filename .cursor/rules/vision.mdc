@@ -1,12 +1,12 @@
 ---
-globs: "**/vision.py"
+globs: "**/vision_utils.py"
 ---
 
 # Vision (Template Matching + OCR Text Detection)
 
 ## Context
 
-`src/bot/vision.py` provides image-based localization: template matching (OpenCV) and OCR text search (pytesseract) on screenshots. Used by tests and debugging; the main bot pipeline uses iframe traversal for Print PDF, not vision.
+`tests/vision_utils.py` provides image-based localization: template matching (OpenCV) and OCR text search (pytesseract) on screenshots. Used by test_template_matching.py and test_ocr.py; the main bot pipeline uses iframe traversal for Print PDF, not vision.
 
 ## Patterns
 

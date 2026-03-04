@@ -1,3 +1,10 @@
+"""Vision utilities for tests: template matching and OCR text detection.
+
+Used by test_template_matching.py and test_ocr.py. The main bot pipeline
+uses JS iframe traversal for Print PDF, not computer vision. This module
+provides image-based localization for debugging and test assertions.
+"""
+
 from __future__ import annotations
 
 import logging
@@ -6,8 +13,8 @@ from pathlib import Path
 
 import cv2
 import numpy as np
-from PIL import Image, ImageOps
 import pytesseract
+from PIL import Image, ImageOps
 
 logger = logging.getLogger(__name__)
 
@@ -84,14 +91,11 @@ def find_template(
             best_loc = max_loc
             best_size = (rw, rh)
 
-    logger.info(
-        "Template match: confidence=%.3f threshold=%.2f", best_val, threshold
-    )
+    logger.info("Template match: confidence=%.3f threshold=%.2f", best_val, threshold)
 
     center: tuple[int, int] | None = None
     if best_loc is not None:
-        center = (best_loc[0] + best_size[0] // 2,
-                  best_loc[1] + best_size[1] // 2)
+        center = (best_loc[0] + best_size[0] // 2, best_loc[1] + best_size[1] // 2)
 
     return MatchResult(
         confidence=best_val,
@@ -127,8 +131,13 @@ def highlight_match(
 
     label = f"{result.confidence:.3f} ({'OK' if result.found else 'BELOW'})"
     cv2.putText(
-        img, label, (x, max(y - 10, 20)),
-        cv2.FONT_HERSHEY_SIMPLEX, 0.8, color, 2,
+        img,
+        label,
+        (x, max(y - 10, 20)),
+        cv2.FONT_HERSHEY_SIMPLEX,
+        0.8,
+        color,
+        2,
     )
     cv2.imwrite(str(output_path), img)
     logger.info("Debug screenshot saved: %s", output_path)
@@ -146,6 +155,7 @@ def get_image_size(path: str | Path) -> tuple[int, int]:
 # ---------------------------------------------------------------------------
 # OCR-based text detection
 # ---------------------------------------------------------------------------
+
 
 def find_text_ocr(
     screenshot: str | Path,
@@ -190,7 +200,9 @@ def find_text_ocr(
 
     config = f"--oem {oem} --psm {psm}"
     data = pytesseract.image_to_data(
-        img, config=config, output_type=pytesseract.Output.DICT,
+        img,
+        config=config,
+        output_type=pytesseract.Output.DICT,
     )
 
     scale_inv = 1.0 / scale if scale != 1.0 else 1.0
@@ -202,16 +214,18 @@ def find_text_ocr(
             continue
         raw_x, raw_y = data["left"][i], data["top"][i]
         raw_w, raw_h = data["width"][i], data["height"][i]
-        words.append({
-            "text": text,
-            "conf": int(data["conf"][i]),
-            "box": (
-                int(raw_x * scale_inv) + crop_offset[0],
-                int(raw_y * scale_inv) + crop_offset[1],
-                int(raw_w * scale_inv),
-                int(raw_h * scale_inv),
-            ),
-        })
+        words.append(
+            {
+                "text": text,
+                "conf": int(data["conf"][i]),
+                "box": (
+                    int(raw_x * scale_inv) + crop_offset[0],
+                    int(raw_y * scale_inv) + crop_offset[1],
+                    int(raw_w * scale_inv),
+                    int(raw_h * scale_inv),
+                ),
+            }
+        )
     target_parts = target.lower().split()
     n = len(target_parts)
 
@@ -219,8 +233,11 @@ def find_text_ocr(
         if target.lower() in w["text"].lower():
             bx, by, bw, bh = w["box"]
             return OcrMatchResult(
-                found=True, text=w["text"], confidence=w["conf"],
-                top_left=(bx, by), size=(bw, bh),
+                found=True,
+                text=w["text"],
+                confidence=w["conf"],
+                top_left=(bx, by),
+                size=(bw, bh),
                 center=(bx + bw // 2, by + bh // 2),
                 words=words,
             )
@@ -241,17 +258,28 @@ def find_text_ocr(
                 matched_text = " ".join(w["text"] for w in span)
 
                 return OcrMatchResult(
-                    found=True, text=matched_text, confidence=avg_conf,
-                    top_left=(bx, by), size=(bw, bh),
+                    found=True,
+                    text=matched_text,
+                    confidence=avg_conf,
+                    top_left=(bx, by),
+                    size=(bw, bh),
                     center=(bx + bw // 2, by + bh // 2),
                     words=words,
                 )
 
-    logger.warning("OCR could not find '%s' — detected words: %s",
-                   target, [w["text"] for w in words])
+    logger.warning(
+        "OCR could not find '%s' — detected words: %s",
+        target,
+        [w["text"] for w in words],
+    )
     return OcrMatchResult(
-        found=False, text="", confidence=0,
-        top_left=None, size=None, center=None, words=words,
+        found=False,
+        text="",
+        confidence=0,
+        top_left=None,
+        size=None,
+        center=None,
+        words=words,
     )
 
 
@@ -273,16 +301,24 @@ def highlight_ocr_match(
 
     if crop:
         cv2.rectangle(
-            img, (crop[0], crop[1]), (crop[2], crop[3]), (0, 200, 0), 2,
+            img,
+            (crop[0], crop[1]),
+            (crop[2], crop[3]),
+            (0, 200, 0),
+            2,
         )
 
     for w in result.words:
         bx, by, bw, bh = w["box"]
         cv2.rectangle(img, (bx, by), (bx + bw, by + bh), (255, 255, 0), 1)
         cv2.putText(
-            img, f"{w['text']} ({w['conf']})",
+            img,
+            f"{w['text']} ({w['conf']})",
             (bx, max(by - 4, 12)),
-            cv2.FONT_HERSHEY_SIMPLEX, 0.45, (255, 255, 0), 1,
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.45,
+            (255, 255, 0),
+            1,
         )
 
     if result.top_left is not None and result.size is not None:
@@ -292,8 +328,13 @@ def highlight_ocr_match(
         cv2.rectangle(img, (x, y), (x + w, y + h), color, 3)
         label = f"OCR: {result.text!r} conf={result.confidence}"
         cv2.putText(
-            img, label, (x, max(y - 10, 20)),
-            cv2.FONT_HERSHEY_SIMPLEX, 0.8, color, 2,
+            img,
+            label,
+            (x, max(y - 10, 20)),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.8,
+            color,
+            2,
         )
 
     cv2.imwrite(str(output_path), img)
@@ -332,8 +373,13 @@ def draw_click_marker(
     if label:
         header = f"{label} | {header}"
     cv2.putText(
-        img, header, (cx + arm + 10, cy - 10),
-        cv2.FONT_HERSHEY_SIMPLEX, 0.55, color, 2,
+        img,
+        header,
+        (cx + arm + 10, cy - 10),
+        cv2.FONT_HERSHEY_SIMPLEX,
+        0.55,
+        color,
+        2,
     )
 
     if strategy_lines:
@@ -341,8 +387,13 @@ def draw_click_marker(
         for line in strategy_lines:
             line_color = (0, 200, 0) if line.startswith("[OK]") else (0, 0, 255)
             cv2.putText(
-                img, line, (cx - arm, y_offset),
-                cv2.FONT_HERSHEY_SIMPLEX, 0.45, line_color, 1,
+                img,
+                line,
+                (cx - arm, y_offset),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.45,
+                line_color,
+                1,
             )
             y_offset += 18
 

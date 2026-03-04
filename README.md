@@ -1,83 +1,72 @@
-# Selenium PDF Question-Answering Bot
+# Form-Filling Bot (PDF + LLM)
 
-A CLI tool that automates answering form questions by downloading a PDF, extracting its text via OCR, and querying an LLM for the answer.
+Hello, this is a demo project that automates answering a multi-question web form. The form page contains a Flash-style viewer with a Print PDF button buried in nested iframes, plus answer inputs and a submit button. The bot downloads the PDF, OCRs it, and uses an LLM to answer each question.
 
-## Prerequisites
+Our system runs these steps:
 
-- **Python 3.11+**
-- **uv** -- [Install uv](https://docs.astral.sh/uv/getting-started/installation/)
-- **Google Chrome** installed
-- **Poppler** (required by `pdf2image`):
-  ```bash
-  # macOS
-  brew install poppler
+1. **Open** the target URL in Chrome (SeleniumBase CDP mode)
+2. **Cloudflare** — skip the challenge if present (up to 5 attempts)
+3. **Print PDF** — traverse the iframe tree inside `<main>`, find the "Print PDF" button, click it via CDP mouse events → PDF auto-downloads
+4. **OCR** — wait for the PDF in the download dir, then extract text via pdf2image + pytesseract
+5. **Answer** — for each question: grab the question text, ask the LLM, fill the form field (text or select)
+6. **Submit** — click the submit button
 
-  # Ubuntu/Debian
-  sudo apt-get install poppler-utils
-  ```
-- **Tesseract OCR** (required by `pytesseract`):
-  ```bash
-  # macOS
-  brew install tesseract
+Bonus: `$ make launch-chrome` launches Chrome with PDF auto-download prefs. Close all Chrome windows first, then run it. This lets the Print PDF click trigger a direct download (no popup, no ESC flow).
 
-  # Ubuntu/Debian
-  sudo apt-get install tesseract-ocr
-  ```
+# STACK
 
-## Setup
+We use **uv** with Python 3.11. Install [uv](https://docs.astral.sh/uv/getting-started/installation/) on your system, then:
 
 ```bash
-# Clone and enter the project
-cd case2
-
-# Install dependencies
-uv sync
-
-# Configure your OpenAI API key
-cp .env.example .env
-# Edit .env and add your key
+$ make deps
+$ make build
+$ make check
 ```
 
-## Usage
+Copy `.env.example` to `.env` and add your `OPENAI_API_KEY`. You also need:
+
+- **Google Chrome**
+- **Poppler** (for pdf2image): `brew install poppler` (macOS) or `sudo apt-get install poppler-utils` (Ubuntu)
+- **Tesseract** (for OCR): `brew install tesseract` (macOS) or `sudo apt-get install tesseract-ocr` (Ubuntu)
+
+Then you're set.
+
+# USAGE
 
 ```bash
-# Basic usage (visible browser)
-uv run bot --url "https://example.com/form"
-
-# Headless mode
-uv run bot --url "https://example.com/form" --headless
-
-# Custom model and download directory
-uv run bot --url "https://example.com/form" --model gpt-4o --download-dir ./downloads
-
-# Override CSS selectors when auto-detection doesn't work
-uv run bot --url "https://example.com/form" \
-  --question-selector "label.question" \
-  --download-selector "a.pdf-link" \
-  --input-selector "textarea#answer" \
-  --submit-selector "button#submit-btn"
+# Run the full bot (headless)
+$ make bot URL=https://example.com/form
 ```
 
-### CLI Options
+## Flow tests (stepwise debugging)
 
-| Flag | Default | Description |
-|------|---------|-------------|
-| `--url` | *(required)* | URL of the form page |
-| `--headless` | off | Run Chrome without a visible window |
-| `--download-dir` | temp dir | Directory for downloaded PDFs |
-| `--model` | `gpt-4o-mini` | OpenAI model to use |
-| `--download-timeout` | `30` | Seconds to wait for PDF download |
-| `--question-selector` | auto-detect | CSS selector for the question element |
-| `--download-selector` | auto-detect | CSS selector for the download button |
-| `--input-selector` | auto-detect | CSS selector for the answer input |
-| `--submit-selector` | auto-detect | CSS selector for the submit button |
+If something breaks mid-pipeline, you can run individual flows:
 
-## How It Works
+- `$ make flow-1 URL=<url>` — Open URL and pass Cloudflare (fresh Chrome)
+- `$ make flow-1-attach URL=<url>` — Same but connect to an already-open Chrome
+- `$ make flow-2` / `flow-2-attach` — Print PDF via iframe (attach = already past Cloudflare)
+- `$ make flow-3` / `flow-3-attach` — Fill form and submit (attach = use `tests/exampl-pdf.pdf` instead of live download)
 
-1. Opens the target URL in Chrome via Selenium
-2. Locates and extracts the question text from the page
-3. Finds and clicks the PDF download button
-4. Waits for the PDF to finish downloading
-5. Converts each PDF page to an image (`pdf2image`) and runs OCR (`pytesseract`)
-6. Sends the question and extracted text to OpenAI and receives an answer
-7. Types the answer into the form input and clicks submit
+Outputs (screenshots, OCR artifacts) go to `outputs/<run_id>/`. Run ID is printed at start.
+
+## Tests
+
+```bash
+$ make test
+```
+
+Runs OCR and template-matching tests (image fixtures, no browser). Browser flows: `make flow-1`, `flow-2`, `flow-3`.
+
+# DESIGN
+
+## Print PDF via iframe traversal
+
+The form page embeds a Flash-style viewer with a Print PDF button deep inside nested iframes. Rather than hardcoding selectors, we traverse the iframe tree from `<main>` and search for a button whose text matches "Print PDF". Clicking is done via CDP mouse events for reliability across frame boundaries.
+
+## PDF auto-download
+
+Chrome must have `plugins.always_open_pdf_externally` so clicking Print PDF triggers a direct download instead of opening in-browser. Use `make launch-chrome` to start Chrome with those prefs. Then the bot or flow tests can connect and run.
+
+## Single-shot, no state
+
+The bot runs once and exits. No database, no caching. Temp download dir is per run (under `outputs/<run_id>/download`). The `SB` context manager cleans up the browser when done.

@@ -8,6 +8,7 @@ Usage:
   make flow-3              # Run full bot
   make flow-3-attach       # Attach (Chrome on form page, use tests/exampl-pdf.pdf)
 """
+
 from __future__ import annotations
 
 import argparse
@@ -22,17 +23,17 @@ sys.path.insert(0, str(_repo_root))
 from dotenv import load_dotenv
 
 from bot import browser, ocr
-from bot.main import run as bot_run
+from bot.config import DEFAULT_PORT, DEFAULT_URL, NUM_STEPS
 from bot.main import parse_args as bot_parse_args
-from tests.browser_utils import DEFAULT_URL, DEFAULT_PORT, connect
+from bot.main import run as bot_run
+from bot.main import run_answer_and_submit
+from tests.browser_utils import connect
 
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(name)s] %(levelname)s: %(message)s",
 )
 logger = logging.getLogger(__name__)
-
-NUM_STEPS = 3
 EXAMPLE_PDF = Path(__file__).resolve().parent / "exampl-pdf.pdf"
 
 
@@ -78,7 +79,7 @@ def run_attach(port: int, pdf_path: Path, url: str) -> int:
         logger.info("Extracted %d chars", len(pdf_text))
 
         logger.info("Filling form and submitting")
-        browser.run_answer_and_submit(sb, pdf_text, NUM_STEPS)
+        run_answer_and_submit(sb, pdf_text, NUM_STEPS)
         logger.info("SUCCESS: Form filled and submitted")
         return 0
     finally:

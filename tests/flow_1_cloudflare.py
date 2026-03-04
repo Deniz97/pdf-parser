@@ -8,6 +8,7 @@ Usage:
   make flow-1              # Run with fresh Chrome
   make flow-1-attach       # Attach (Chrome must be running)
 """
+
 from __future__ import annotations
 
 import argparse
@@ -23,7 +24,7 @@ sys.path.insert(0, str(_repo_root))
 from seleniumbase import SB
 
 from bot import browser
-from tests.browser_utils import DEFAULT_URL, DEFAULT_PORT, connect
+from tests.browser_utils import DEFAULT_PORT, DEFAULT_URL, connect
 
 logging.basicConfig(
     level=logging.INFO,

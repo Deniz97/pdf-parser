@@ -1,21 +1,25 @@
 .PHONY: deps build format typecheck bot test launch-chrome flow-1 flow-2 flow-3 flow-1-attach flow-2-attach flow-3-attach
 
-# Install dependencies
+# Install dependencies (including dev: pytest, ruff, black, pyright)
 deps:
-	uv sync
+	uv sync --all-extras
 
 # Build the package
 build:
 	uv build
 
-# Format code with ruff and black
+# Format code with ruff and black; fix lint with ruff check
 format:
-	uv run ruff format .
-	uv run black .
+	uv run ruff check --fix src/ tests/ scripts/
+	uv run ruff format src/ tests/ scripts/
+	uv run black src/ tests/ scripts/
 
-# Type check with mypy
+# Type check with pyright
 typecheck:
-	uv run mypy src/
+	uv run pyright src/
+
+check: deps build typecheck format
+	echo "All checks passed"
 
 URL=https://staging.squadhealth.ai/interview
 # Run the bot with a URL
@@ -24,7 +28,7 @@ bot:
 		echo "Error: URL is required. Usage: make bot URL=https://example.com"; \
 		exit 1; \
 	fi
-	uv run bot --url $(URL)
+	uv run bot --url $(URL) --headless
 
 # Launch Chrome with PDF auto-download prefs (close all Chrome windows first)
 launch-chrome:
@@ -48,6 +52,6 @@ flow-3:
 flow-3-attach:
 	uv run python tests/flow_3_form_submit.py --url $(URL) --attach
 
-# Run tests (use -m "not cloudflare" to skip live browser tests)
+# Run tests (OCR, template matching)
 test:
 	uv run pytest tests/

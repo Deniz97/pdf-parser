@@ -19,7 +19,7 @@ alwaysApply: true
 | pytesseract | OCR on PIL Images (requires system tesseract) |
 | openai | LLM API client (chat completions) |
 | python-dotenv | Load `.env` for `OPENAI_API_KEY` |
-| opencv-python-headless | Template matching and image processing in vision.py |
+| opencv-python-headless | Dev dep: template matching + OCR in tests/vision_utils.py |
 
 ## Project Layout
 
@@ -28,13 +28,13 @@ src/bot/
 ├── main.py      # CLI (argparse) + orchestration
 ├── browser.py   # SeleniumBase CDP mode, iframe Print PDF, form interaction
 ├── ocr.py       # PDF-to-text pipeline (pdf2image + pytesseract)
-├── llm.py       # OpenAI chat completions
-└── vision.py    # Template matching + OCR text detection (tests, debugging)
+└── llm.py       # OpenAI chat completions
 
 scripts/
 └── launch_chrome.py        # Launch Chrome with PDF auto-download prefs
 
 tests/
+├── vision_utils.py         # Template matching + OCR (test-only, not used by bot)
 ├── browser_utils.py        # Shared SbAdapter, launch/connect for flow tests
 ├── conftest.py             # Fixtures: example_page, print_pdf_button
 ├── example-page.png        # Screenshot fixture for template/OCR tests
@@ -43,7 +43,6 @@ tests/
 ├── flow_1_cloudflare.py    # Flow 1: URL + Cloudflare (make flow-1 / flow-1-attach)
 ├── flow_2_print_pdf.py     # Flow 2: Print PDF (make flow-2 / flow-2-attach)
 ├── flow_3_form_submit.py   # Flow 3: Fill + submit (make flow-3 / flow-3-attach)
-├── test_cloudflare.py      # Live browser test (pytest -m "not cloudflare" to skip)
 ├── test_ocr.py             # find_text_ocr on example-page
 └── test_template_matching.py  # find_template on example-page
 ```
